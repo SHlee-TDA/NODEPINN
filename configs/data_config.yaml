@@ -1,0 +1,30 @@
+# 데이터셋 생성 설정
+
+# 샘플 개수
+n_samples: 1000
+n_vis_samples: 5
+
+# 시간 설정
+t_max: 20
+n_points: 200
+
+# 파라미터 범위 (Lotka-Volterra)
+parameter_ranges:
+  alpha: [0.5, 1.5]   # 포식자 없을 때 먹이 성장률
+  beta: [0.5, 1.5]    # 먹이 포식률
+  gamma: [0.5, 1.5]   # 먹이 없을 때 포식자 사망률
+  delta: [0.5, 1.5]   # 포식자 성장 변환률
+
+# 초기 조건 범위
+initial_condition_ranges:
+  y1: [1.0, 3.0]      # 초기 먹이 개체수
+  y2: [1.0, 3.0]      # 초기 포식자 개체수
+
+# 데이터 분할 비율
+train_ratio: 0.8
+val_ratio: 0.1
+test_ratio: 0.1
+
+# 노이즈 설정 (데이터에 노이즈 추가 옵션)
+add_noise: true
+noise_level: 0.02     # 표준편차 (데이터 범위의 비율) 

@@ -1,0 +1,64 @@
+# NODEPINN 프로젝트 설정
+
+# 실험 설정
+experiment:
+  name: "lotka_volterra_pinn"
+  seed: 42
+  device: "cuda"  # "cuda" 또는 "cpu"
+  log_dir: "logs"
+  checkpoint_dir: "checkpoints"
+  save_freq: 10  # epoch마다 체크포인트 저장 빈도
+
+# 데이터 설정
+data:
+  dataset_path: "data/generated/dataset.pkl"
+  batch_size: 32
+  shuffle: true
+  num_workers: 4
+
+# 모델 설정
+model:
+  # Neural ODE Vector Field
+  vector_field:
+    type: "mlp"  # "mlp" 또는 "resnet"
+    hidden_dims: [64, 128, 64]
+    activation: "tanh"
+    use_batch_norm: false
+    dropout_rate: 0.0
+  
+  # 파라미터 추정 네트워크
+  param_estimator:
+    type: "transformer"  # "transformer", "lstm", "cnn", "mlp"
+    hidden_dims: [128, 64, 32]
+    n_heads: 4           # Transformer 사용 시
+    n_layers: 2          # Transformer/LSTM 사용 시
+    activation: "relu"
+    use_batch_norm: true
+    dropout_rate: 0.1
+
+# 학습 설정
+training:
+  n_epochs: 300
+  optimizer: "adam"  # "adam", "sgd", "adamw"
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  scheduler: "cosine"  # "step", "cosine", "none"
+  lr_step_size: 50     # step scheduler 사용 시
+  lr_gamma: 0.5        # step scheduler 사용 시
+  early_stopping_patience: 20
+  gradient_clip_val: 1.0
+
+# 손실 함수 설정
+loss:
+  data_weight: 1.0      # 데이터 기반 손실 가중치
+  physics_weight: 0.1   # 물리 기반 손실 가중치
+  reg_weight: 0.001     # 정규화 가중치
+
+# ODE 풀이 설정
+ode_solver:
+  method: "dopri5"  # "dopri5", "euler", "rk4"
+  rtol: 1e-3
+  atol: 1e-4
+  t_min: 0.0
+  t_max: 20.0
+  n_steps: 200 
