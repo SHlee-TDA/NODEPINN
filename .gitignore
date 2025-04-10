@@ -54,6 +54,7 @@ data/*.npy
 data/*.npz
 data/*.pkl
 data/*.h5
+generated/
 
 # Model checkpoints
 *.pt
