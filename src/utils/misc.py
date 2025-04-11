@@ -227,3 +227,10 @@ def split_dataset(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, see
     test_data = [dataset[i] for i in test_indices]
     
     return train_data, val_data, test_data 
+
+
+def load_dataset(dir_name, file_stem=None):
+    if file_stem is None:
+        file_stem = dir_name.replace('_', '')  # 기본 룰 적용
+    path = os.path.join('..', 'generated', dir_name, f'{file_stem}_dataset.npz')
+    return np.load(path)

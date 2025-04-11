@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 import sys
-
+import random
+import torch
 # 스크립트 직접 실행 시 상위 디렉토리를 path에 추가
 if __name__ == '__main__':
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,6 +13,26 @@ if __name__ == '__main__':
 # 절대 경로 import 사용
 from data.base import BaseODESystem
 from data.observe import ObservationModel
+
+def set_seed(seed):
+    """
+    재현성을 위한 시드 설정
+    
+    Args:
+        seed (int): 시드 값
+    """
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    print(f"시드가 {seed}로 설정되었습니다.")
+
+set_seed(42)
+
 
 # 디렉토리 생성 함수 추가
 def ensure_dir(directory):
@@ -239,7 +260,14 @@ class LorenzSystem(BaseODESystem):
         sol = self.solve(time_span, t_eval=t_eval, x0=x0, params=params)
         return sol, x0, params
 
-def generate_and_visualize(ode_system, num_samples=3, time_span=(0, 10), dt=0.1, num_obs_points=5, noise_std=0.2, output_dir='generated'):
+def generate_and_visualize(ode_system, 
+                           num_samples=3, 
+                           time_span=(0, 10), 
+                           dt=0.1, 
+                           num_obs_points=5, 
+                           noise_std=0.2, 
+                           output_dir='generated',
+                           save_format='npz'):
     """
     ODE 시스템에 대한 데이터 생성 및 시각화 함수
     
@@ -259,7 +287,8 @@ def generate_and_visualize(ode_system, num_samples=3, time_span=(0, 10), dt=0.1,
     samples = []
     sols = []
     time_steps = []
-    
+    x0_list = []
+    params_list = []
     t_eval = np.arange(time_span[0], time_span[1] + dt, dt)
     
     # 관측 모델 초기화
@@ -280,6 +309,8 @@ def generate_and_visualize(ode_system, num_samples=3, time_span=(0, 10), dt=0.1,
         t_obs, obs = obs_model.sample(sol, time_points=obs_times)
         time_steps.append(t_obs)
         samples.append(obs)
+        x0_list.append(x0)
+        params_list.append(params)
     
     # ODE 시스템에 따른 다른 시각화 방법
     if ode_system.state_dim == 2:  # 2차원 시스템 (Lotka-Volterra, Linear System)
@@ -294,17 +325,36 @@ def generate_and_visualize(ode_system, num_samples=3, time_span=(0, 10), dt=0.1,
         'sols': sols,
         'time_steps': time_steps,
         'samples': samples,
-        'system_type': ode_system.__class__.__name__
+        'system_type': ode_system.__class__.__name__,
+        'params': params_list,
+        'x0': x0_list
     }
     
     # 시스템 이름 가져오기
     system_name = ode_system.__class__.__name__.lower()
     
-    # 데이터 저장
-    dataset_filename = f'{system_name}_dataset.pkl'
-    with open(os.path.join(output_dir, dataset_filename), 'wb') as f:
-        pickle.dump(dataset, f)
-    print(f"데이터셋이 {os.path.join(output_dir, dataset_filename)}에 저장되었습니다.")
+    # 저장 방식 분기
+    if save_format == 'pkl':
+        file_path = os.path.join(output_dir, f'{system_name}_dataset.pkl')
+        with open(file_path, 'wb') as f:
+            pickle.dump(dataset, f)
+        print(f"피클 파일로 저장 완료: {file_path}")
+
+    elif save_format == 'npz':
+        npz_data = {
+            'params': np.array(params_list),
+            'x0': np.array(x0_list),
+            'samples': np.array(samples),       # shape: (N, T, D)
+            'time_steps': np.array(time_steps), # shape: (N, T)
+            'sols': sols,
+            'dt': dt,
+            'system_type': ode_system.__class__.__name__,
+        }
+        file_path = os.path.join(output_dir, f'{system_name}_dataset.npz')
+        np.savez(file_path, **npz_data)
+        print(f"압축 npz 파일로 저장 완료: {file_path}")
+    else:
+        raise ValueError(f"지원하지 않는 저장 형식: {save_format}")
     
     return dataset
 
@@ -477,7 +527,7 @@ def main():
             'system': LorenzSystem(),
             'time_span': (0, 20),
             'dt': 0.05,
-            'noise_std': 0.5
+            'noise_std': 0.1
         }
     }
     
@@ -496,12 +546,13 @@ def main():
             
             generate_and_visualize(
                 ode_system=system_info['system'],
-                num_samples=2,  # 샘플 수 줄임
+                num_samples=10000,
                 time_span=system_info['time_span'],
                 dt=system_info['dt'],
-                num_obs_points=8,  # 관측점 8개로 늘림
+                num_obs_points=8,
                 noise_std=system_info['noise_std'],
-                output_dir=os.path.join('generated', system_key)
+                output_dir=os.path.join('generated', system_key),
+                save_format='npz'
             )
     
     print("\n모든 데이터 생성 및 시각화 완료!")
